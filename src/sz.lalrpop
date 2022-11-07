@@ -1,0 +1,66 @@
+use crate::spans::{Span, Spanned};
+use crate::ast;
+
+grammar;
+
+pub Indent: String = <r"[a-z_]\w*"> => String::from(<>);
+pub Tag: String = <r"`[A-Z0-9]\w*"> => String::from(<>);
+pub IntLiteral: String = {
+    <r"-?(?:0|[1-9][0-9]*)"> => String::from(<>),
+    r"0\d" "Number cannot have leading zeros" => "0".to_string(),
+};
+pub FloatLiteral: String = {
+    <r"-?(?:0|[1-9][0-9]*)\.[0-9]*(?:[eE]-?[0-9]+)?"> => String::from(<>)
+};
+
+pub StringLiteral: String =
+    <r#""[^\\"\n\r]*(?:\\[tn'"\\][^\\"\n\r]*)*""#> => String::from(<>);
+
+CommentRest = {
+    "*/",
+    "Sorry, comments cannont contain * unless you are closing */"
+};
+
+pub Comment = {
+    <r#"/\*[^*]*"#> CommentRest,
+    r#"//.*"#,
+};
+
+SepList<T, Sep>: Vec<T> = {
+    <v:(<T> Sep)*> <e:T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    }
+};
+
+pub Script = {
+   <SepList<StringLiteral, ";">>
+};
+
+Spanned<T>: Spanned<T> = {
+    <l: @L> <val: T> <r: @R> => (val, Span(0))
+};
+
+pub VarOrLiteral: Box<ast::Expr> = {
+    Spanned<Indent> => Box::new(
+        match <>.0.as_str() {
+            "false" | "true" => ast::Expr::Literal(ast::Literal::Bool, <>),
+            "null" => ast::Expr::Literal(ast::Literal::Null, <>),
+            _ => ast::Expr::Variable(<>)
+        }
+    ),
+
+    Spanned<FloatLiteral> => Box::new(
+        ast::Expr::Literal(ast::Literal::Float, <>)
+    ),
+
+    Spanned<IntLiteral> => Box::new(
+        ast::Expr::Literal(ast::Literal::Int, <>)
+    ),
+
+    Spanned<StringLiteral> => Box::new(
+        ast::Expr::Literal(ast::Literal::Str, <>)
+    )
+
+};
