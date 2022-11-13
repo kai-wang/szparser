@@ -1,6 +1,8 @@
 #[macro_use] extern crate lalrpop_util;
 mod ast;
 mod spans;
+mod value;
+mod parse;
 
 fn main() {
     println!("Hello, world!");
